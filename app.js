@@ -1,6 +1,5 @@
-// 根據你最後提供的代碼修正的金鑰配置
 const firebaseConfig = {
-  apiKey: "AIzaSyBroLWbh0y7bBp8lWLJKlJbusO36tOimL8", 
+  apiKey: "AIzaSyBroLWbh0y7bBp8lWLJKlJbusO36tOimL8",
   authDomain: "weifeng-ai-search.firebaseapp.com",
   projectId: "weifeng-ai-search",
   storageBucket: "weifeng-ai-search.firebasestorage.app",
@@ -9,79 +8,125 @@ const firebaseConfig = {
   measurementId: "G-DX7B5REPVJ"
 };
 
-// 【重要】使用相容模式 (compat) 初始化，這才能對應 index.html 裡的 script
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-let isNewUser = false;
+let isRegisterMode = false;
 
-// 1. 打開與切換介面 (移除彈窗，純 UI 變換)
-function openAuth() {
-    isNewUser = false;
+// 1. 介面控制
+function openAuth(forceRegister = false) {
     document.getElementById('auth-overlay').style.display = 'flex';
-    document.getElementById('step-1').style.display = 'block';
-    document.getElementById('step-2').style.display = 'none';
-    document.getElementById('step-title').innerText = "登入";
-    document.getElementById('step-desc').innerText = "使用您的 Weifeng 帳號";
+    isRegisterMode = forceRegister;
+    updateAuthUI();
 }
 
 function closeAuth() {
     document.getElementById('auth-overlay').style.display = 'none';
 }
 
-function toggleToRegister() {
-    isNewUser = true;
-    document.getElementById('step-title').innerText = "註冊";
-    document.getElementById('step-desc').innerText = "建立您的微風帳號";
+function switchToRegister() {
+    isRegisterMode = true;
+    updateAuthUI();
 }
 
-// 2. 下一步
-function showPasswordStep() {
-    const id = document.getElementById('account-id').value;
+function updateAuthUI() {
+    document.getElementById('auth-title').innerText = isRegisterMode ? "建立帳號" : "登入";
+    document.getElementById('register-only').style.display = isRegisterMode ? "block" : "none";
+    document.getElementById('step-1').style.display = 'block';
+    document.getElementById('step-2').style.display = 'none';
+}
+
+// 2. 登入/註冊流程
+function goToStep2() {
+    const id = document.getElementById('acc-id').value;
     if(!id) return alert("請輸入帳號");
-    
-    document.getElementById('target-email').innerText = id + "@weifeng.tw";
+    document.getElementById('display-email').innerText = id + "@weifeng.tw";
     document.getElementById('step-1').style.display = 'none';
     document.getElementById('step-2').style.display = 'block';
 }
 
-// 3. 提交驗證
-async function submitAuth() {
-    const id = document.getElementById('account-id').value;
-    const pw = document.getElementById('account-pw').value;
+async function processAuth() {
+    const id = document.getElementById('acc-id').value;
+    const pw = document.getElementById('acc-pw').value;
+    const name = document.getElementById('reg-name').value;
     const email = id + "@weifeng.tw";
 
     try {
-        if(isNewUser) {
-            await auth.createUserWithEmailAndPassword(email, pw);
-            alert("註冊成功！");
+        let userCredential;
+        if(isRegisterMode) {
+            userCredential = await auth.createUserWithEmailAndPassword(email, pw);
+            // 存入基本資料
+            await db.collection('users').doc(userCredential.user.uid).set({
+                name: name || id,
+                avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+            });
         } else {
-            await auth.signInWithEmailAndPassword(email, pw);
-            alert("登入成功！");
+            userCredential = await auth.signInWithEmailAndPassword(email, pw);
         }
+        
+        // 紀錄到本地多帳號清單
+        saveToLocalAccounts(userCredential.user.email);
         closeAuth();
-    } catch(e) {
-        // 如果 API Key 有問題，這裡會清楚顯示原因
-        console.error("Firebase Error:", e);
-        alert("錯誤: " + e.message);
+    } catch(e) { alert(e.message); }
+}
+
+// 3. 多帳號管理
+function saveToLocalAccounts(email) {
+    let accounts = JSON.parse(localStorage.getItem('wf_accounts') || '[]');
+    if(!accounts.includes(email)) {
+        accounts.push(email);
+        localStorage.setItem('wf_accounts', JSON.stringify(accounts));
     }
 }
 
-// 4. 監聽狀態
-auth.onAuthStateChanged(user => {
-    const loginBtn = document.getElementById('main-login-btn');
-    const userInfo = document.getElementById('user-info');
+function toggleMenu() {
+    const menu = document.getElementById('account-menu');
+    menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+}
+
+async function changeAvatar() {
+    const url = prompt("請貼上新的頭像圖片網址：");
+    if(url) {
+        await db.collection('users').doc(auth.currentUser.uid).update({ avatar: url });
+        location.reload();
+    }
+}
+
+function handleLogout() {
+    auth.signOut().then(() => location.reload());
+}
+
+// 4. 監聽狀態與 UI 渲染
+auth.onAuthStateChanged(async (user) => {
     if(user) {
-        loginBtn.innerText = "登出";
-        loginBtn.onclick = () => auth.signOut();
-        userInfo.innerText = user.email.split('@')[0];
+        const doc = await db.collection('users').doc(user.uid).get();
+        const data = doc.data() || { name: user.email.split('@')[0], avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png" };
+        
+        document.getElementById('nav-login-btn').style.display = 'none';
+        document.getElementById('user-section').style.display = 'block';
+        
+        document.getElementById('top-avatar').src = data.avatar;
+        document.getElementById('menu-avatar').src = data.avatar;
+        document.getElementById('menu-name').innerText = data.name;
+        document.getElementById('menu-email').innerText = user.email;
+
+        renderOtherAccounts(user.email);
     } else {
-        loginBtn.innerText = "登入";
-        loginBtn.onclick = openAuth;
-        userInfo.innerText = "";
+        document.getElementById('nav-login-btn').style.display = 'block';
+        document.getElementById('user-section').style.display = 'none';
     }
 });
+
+function renderOtherAccounts(currentEmail) {
+    const accounts = JSON.parse(localStorage.getItem('wf_accounts') || '[]');
+    const container = document.getElementById('other-accounts');
+    container.innerHTML = "";
+    accounts.filter(e => e !== currentEmail).forEach(email => {
+        const item = document.createElement('div');
+        item.className = "menu-item";
+        item.innerText = "👥 " + email;
+        item.onclick = () => { alert("切換帳號功能：請登出後使用新帳號登入。"); };
+        container.appendChild(item);
+    });
+}
