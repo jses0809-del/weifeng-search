@@ -18,27 +18,30 @@ let isRegisterMode = false;
 function openAuth(reg) {
     isRegisterMode = reg;
     document.getElementById('auth-overlay').style.display = 'flex';
-    document.getElementById('auth-title').innerText = reg ? "建立帳號" : "登入";
+    document.getElementById('auth-title').innerText = reg ? "建立 Weifeng 帳號" : "登入 Weifeng";
     document.getElementById('reg-fields').style.display = reg ? "block" : "none";
     document.getElementById('step-1').style.display = 'block';
     document.getElementById('step-2').style.display = 'none';
-    document.getElementById('acc-id').value = ""; // 清空輸入框
+    document.getElementById('acc-id').value = ""; 
 }
 
 function closeAuth() { document.getElementById('auth-overlay').style.display = 'none'; }
 function switchToRegister() { openAuth(true); }
 
-// 處理 Email 格式的關鍵函數
-function getFinalEmail(input) {
-    // 如果輸入內容已經包含 @，就直接回傳；否則加上 @weifeng.tw
-    return input.includes('@') ? input : `${input}@weifeng.tw`;
-}
-
+// 下一步：驗證並強制使用 weifeng.tw
 function goToStep2() {
-    const id = document.getElementById('acc-id').value.trim();
-    if(!id) return alert("請輸入帳號或 Email");
+    const idInput = document.getElementById('acc-id').value.trim();
     
-    const finalEmail = getFinalEmail(id);
+    // 規定 1：不允許輸入 @ 符號，確保使用者只輸入帳號前綴
+    if (idInput.includes('@')) {
+        return alert("請僅輸入帳號名稱，不須包含 @ 符號，系統將自動為您加上 @weifeng.tw");
+    }
+    
+    if(!idInput) return alert("請輸入帳號名稱");
+    
+    // 規定 2：強制後置網域
+    const finalEmail = idInput + "@weifeng.tw";
+    
     document.getElementById('display-email').innerText = finalEmail;
     document.getElementById('step-1').style.display = 'none';
     document.getElementById('step-2').style.display = 'block';
@@ -46,10 +49,12 @@ function goToStep2() {
 
 // 登入/註冊核心
 async function processAuth() {
-    const id = document.getElementById('acc-id').value.trim();
+    const idInput = document.getElementById('acc-id').value.trim();
     const pw = document.getElementById('acc-pw').value;
-    const email = getFinalEmail(id); // 使用判斷後的 Email
-    const name = document.getElementById('reg-name').value || id.split('@')[0];
+    
+    // 再次確保格式正確
+    const email = idInput + "@weifeng.tw";
+    const name = document.getElementById('reg-name').value || idInput;
 
     try {
         if(isRegisterMode) {
@@ -63,7 +68,7 @@ async function processAuth() {
         }
         closeAuth();
     } catch(e) {
-        alert("失敗: " + e.message);
+        alert("驗證失敗: " + e.message);
     }
 }
 
