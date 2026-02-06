@@ -11,8 +11,9 @@
         .res-input { width: 500px; padding: 10px 20px; border: 1px solid #dfe1e5; border-radius: 24px; outline: none; }
         .content { padding: 20px 85px; max-width: 700px; }
         .item { margin-bottom: 30px; }
-        .item-title { font-size: 20px; color: #1a0dab; text-decoration: none; }
+        .item-title { font-size: 20px; color: #1a0dab; text-decoration: none; font-weight: 500; }
         .item-title:hover { text-decoration: underline; }
+        .item-url { font-size: 14px; color: #006621; display: block; margin-top: 2px; }
         .item-snippet { font-size: 14px; color: #4d5156; margin-top: 5px; line-height: 1.5; }
     </style>
 </head>
@@ -22,38 +23,54 @@
         <input type="text" id="top-search" class="res-input">
     </div>
     <div class="content" id="results-list">
-        <p>🔍 正在準備搜尋結果...</p>
+        <p id="status">正在從後台獲取資料...</p>
     </div>
 
     <script>
+        // 這裡就是你所謂的「後台準備」
+        const API_KEY = "你的_API_KEY"; // 如果沒有，請暫時用 DuckDuckGo 的邏輯避開 Google
+        const SEARCH_ENGINE_ID = "你的_CX_ID"; 
+
         const q = new URLSearchParams(window.location.search).get('q');
         const input = document.getElementById('top-search');
-        if(q) { input.value = q; fetchResults(q); }
+        if(q) { 
+            input.value = q; 
+            fetchFromBackend(q); 
+        }
 
-        input.addEventListener('keypress', e => {
-            if(e.key === 'Enter') window.location.href = `results.html?q=${encodeURIComponent(input.value)}`;
-        });
-
-        async function fetchResults(query) {
+        async function fetchFromBackend(query) {
             const list = document.getElementById('results-list');
+            
+            // 關鍵：這行請求只會拿回 JSON 數據，不會拿回 Google 的 HTML/Logo
+            // 如果你目前無法使用 Google API，這裡暫時改用 DuckDuckGo 也能達到一樣效果
+            const apiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`;
+
             try {
-                const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`);
+                const res = await fetch(apiUrl);
                 const data = await res.json();
-                list.innerHTML = "";
-                
-                if(data.AbstractText) {
-                    list.innerHTML += `<div class="item"><h3>${data.Heading}</h3><p>${data.AbstractText}</p></div><hr>`;
+                list.innerHTML = ""; // 清空
+
+                // 模擬後台處理：只取出我們想要的欄位
+                if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+                    data.RelatedTopics.forEach(item => {
+                        if (item.Text) {
+                            // 這裡只渲染文字，不會有任何 Google 的商標
+                            const div = document.createElement('div');
+                            div.className = 'item';
+                            div.innerHTML = `
+                                <a class="item-title" href="${item.FirstURL}" target="_blank">${item.Text.split(' - ')[0]}</a>
+                                <span class="item-url">${item.FirstURL}</span>
+                                <p class="item-snippet">${item.Text}</p>
+                            `;
+                            list.appendChild(div);
+                        }
+                    });
+                } else {
+                    list.innerHTML = "未發現相關資料。";
                 }
-                data.RelatedTopics.forEach(t => {
-                    if(t.Text) {
-                        list.innerHTML += `
-                        <div class="item">
-                            <a class="item-title" href="${t.FirstURL}" target="_blank">${t.Text.split(' - ')[0]}</a>
-                            <p class="item-snippet">${t.Text}</p>
-                        </div>`;
-                    }
-                });
-            } catch(e) { list.innerHTML = "無法取得結果。"; }
+            } catch (e) {
+                list.innerHTML = "資料傳輸失敗。";
+            }
         }
     </script>
 </body>
