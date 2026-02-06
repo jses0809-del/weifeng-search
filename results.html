@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>搜尋結果 - Weifeng Search</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; padding: 20px; }
+        .header { display: flex; align-items: center; gap: 20px; border-bottom: 1px solid #ebebeb; padding-bottom: 20px; }
+        .logo-small { width: 30px; height: auto; cursor: pointer; }
+        .result-item { max-width: 650px; margin-top: 25px; }
+        .result-title { font-size: 20px; color: #1a0dab; text-decoration: none; }
+        .result-title:hover { text-decoration: underline; }
+        .result-url { font-size: 14px; color: #006621; display: block; margin-top: 2px; }
+        .result-snippet { font-size: 14px; color: #4d5156; margin-top: 5px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" class="logo-small" onclick="location.href='index.html'">
+        <input type="text" id="res-search-input" style="width: 500px; padding: 10px; border-radius: 24px; border: 1px solid #dfe1e5;">
+    </div>
+
+    <div id="results-list">
+        <p id="loading">正在為您搜尋...</p>
+    </div>
+
+    <script>
+        // 獲取網址上的參數 ?q=關鍵字
+        const urlParams = new URLSearchParams(window.location.search);
+        const query = urlParams.get('q');
+        
+        if (query) {
+            document.getElementById('res-search-input').value = query;
+            fetchResults(query);
+        }
+
+        async function fetchResults(q) {
+            // 這裡需要串接 API，暫時用模擬數據展示
+            const list = document.getElementById('results-list');
+            
+            // 模擬延遲
+            setTimeout(() => {
+                list.innerHTML = `
+                    <div class="result-item">
+                        <a class="result-title" href="#">${q} - 維基百科</a>
+                        <span class="result-url">https://zh.wikipedia.org/wiki/${q}</span>
+                        <p class="result-snippet">這是關於 ${q} 的詳細介紹，Weifeng Search 為您找到最相關的資訊...</p>
+                    </div>
+                `;
+            }, 800);
+        }
+    </script>
+</body>
+</html>
