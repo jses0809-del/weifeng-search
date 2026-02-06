@@ -2,139 +2,64 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weifeng Search - 搜尋結果</title>
+    <title>搜尋結果 - Weifeng Search</title>
     <link rel="icon" href="logo.png" type="image/png">
-    
     <style>
-        body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; background: #fff; color: #202124; }
+        body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; background: #fff; }
+        .header { display: flex; align-items: center; padding: 15px 30px; border-bottom: 1px solid #ebebeb; position: sticky; top: 0; background: white; z-index: 1000; }
+        .logo-small { width: 35px; margin-right: 20px; cursor: pointer; }
+        .search-bar { display: flex; flex: 1; max-width: 600px; border: 1px solid #dfe1e5; border-radius: 24px; padding: 2px 15px; align-items: center; }
+        .res-input { flex: 1; border: none; padding: 10px; outline: none; font-size: 16px; }
+        .res-btn { background: #1a73e8; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; }
         
-        /* 上方導覽列 */
-        .header { 
-            display: flex; align-items: center; padding: 15px 30px; 
-            border-bottom: 1px solid #ebebeb; position: sticky; top: 0; 
-            background: white; z-index: 1000; 
-        }
-        .logo-small { width: 35px; height: auto; cursor: pointer; margin-right: 25px; }
-        
-        .search-container { display: flex; align-items: center; background: #fff; border: 1px solid #dfe1e5; border-radius: 24px; width: 100%; max-width: 600px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .search-container:hover { box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
-        
-        .res-input { flex: 1; border: none; padding: 10px 20px; border-radius: 24px; outline: none; font-size: 16px; }
-        
-        .res-search-btn { background: #1a73e8; color: white; border: none; padding: 8px 18px; border-radius: 20px; cursor: pointer; margin-right: 5px; font-weight: 500; }
-        .res-search-btn:hover { background: #1557b0; }
-
-        /* 結果內容區 */
-        .content { padding: 20px 20px 20px 90px; max-width: 700px; }
-        
-        #status { color: #70757a; font-size: 14px; margin-bottom: 20px; }
-        
-        .item { margin-bottom: 30px; animation: fadeIn 0.4s ease; }
-        .item-title { font-size: 20px; color: #1a0dab; text-decoration: none; font-weight: 500; display: block; margin-bottom: 3px; }
+        .content { padding: 20px 20px 20px 85px; max-width: 700px; }
+        .item { margin-bottom: 28px; }
+        .item-title { font-size: 20px; color: #1a0dab; text-decoration: none; display: block; }
         .item-title:hover { text-decoration: underline; }
-        
-        .item-url { font-size: 14px; color: #006621; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-snippet { font-size: 14px; color: #4d5156; line-height: 1.5; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 手機版適應 */
-        @media (max-width: 768px) {
-            .content { padding: 20px; }
-            .header { padding: 15px; }
-            .search-container { max-width: none; }
-        }
+        .item-url { color: #006621; font-size: 14px; }
+        .item-snippet { color: #4d5156; font-size: 14px; line-height: 1.5; margin-top: 5px; }
     </style>
 </head>
 <body>
-
     <div class="header">
-        <img src="logo.png" class="logo-small" onclick="location.href='index.html'" alt="Weifeng">
-        <div class="search-container">
-            <input type="text" id="top-search" class="res-input" placeholder="在 Weifeng 上搜尋...">
-            <button class="res-search-btn" onclick="triggerNewSearch()">搜尋</button>
+        <img src="logo.png" class="logo-small" onclick="location.href='index.html'">
+        <div class="search-bar">
+            <input type="text" id="top-search" class="res-input">
+            <button class="res-btn" onclick="triggerSearch()">搜尋</button>
         </div>
     </div>
-
     <div class="content" id="results-list">
-        <p id="status">🔍 Weifeng 正在從後台提取資料庫資訊...</p>
-        </div>
+        <p>🔍 正在搜尋...</p>
+    </div>
 
     <script>
-        // 1. 初始化搜尋：取得網址上的關鍵字 ?q=xxx
-        const urlParams = new URLSearchParams(window.location.search);
-        const query = urlParams.get('q');
-        const searchInput = document.getElementById('top-search');
-        
-        if (q) {
-            searchInput.value = query;
-            fetchResultsFromSerper(query);
+        const query = new URLSearchParams(window.location.search).get('q');
+        const input = document.getElementById('top-search');
+        if(query) { input.value = query; fetchSerper(query); }
+
+        function triggerSearch() {
+            if(input.value.trim()) window.location.href = `results.html?q=${encodeURIComponent(input.value)}`;
         }
+        input.addEventListener('keypress', e => { if(e.key==='Enter') triggerSearch(); });
 
-        // 2. 監聽 Enter 鍵
-        searchInput.addEventListener('keypress', e => {
-            if (e.key === 'Enter') triggerNewSearch();
-        });
-
-        // 3. 執行新搜尋
-        function triggerNewSearch() {
-            const val = searchInput.value.trim();
-            if (val) {
-                window.location.href = `results.html?q=${encodeURIComponent(val)}`;
-            }
-        }
-
-        // 4. 後台提取資料邏輯 (Serper.dev)
-        async function fetchResultsFromSerper(searchQuery) {
+        async function fetchSerper(q) {
             const list = document.getElementById('results-list');
-            const statusText = document.getElementById('status');
-            
-            // 使用你提供的 Serper.dev API KEY
-            const apiKey = "b8cdaab7fd01e7a8cd78ce3c164e5fe1d042446b"; 
-
             try {
                 const response = await fetch("https://google.serper.dev/search", {
                     method: "POST",
-                    headers: {
-                        "X-API-KEY": apiKey,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ 
-                        "q": searchQuery,
-                        "gl": "tw", // 地區：台灣
-                        "hl": "zh-tw" // 語言：繁體中文
-                    })
+                    headers: { "X-API-KEY": "b8cdaab7fd01e7a8cd78ce3c164e5fe1d042446b", "Content-Type": "application/json" },
+                    body: JSON.stringify({ q: q, gl: "tw", hl: "zh-tw" })
                 });
-                
                 const data = await response.json();
-                
-                // 清空狀態文字
-                list.innerHTML = `<p style="color:#70757a; font-size:12px;">找到約 ${data.organic ? data.organic.length : 0} 筆結果</p>`;
-
-                // 渲染自然搜尋結果 (Organic)
-                if (data.organic && data.organic.length > 0) {
-                    data.organic.forEach(result => {
-                        const itemDiv = document.createElement('div');
-                        itemDiv.className = 'item';
-                        itemDiv.innerHTML = `
-                            <a class="item-title" href="${result.link}" target="_blank">${result.title}</a>
-                            <span class="item-url">${result.link}</span>
-                            <p class="item-snippet">${result.snippet || "無詳細內容描述。"}</p>
-                        `;
-                        list.appendChild(itemDiv);
-                    });
-                } else {
-                    list.innerHTML = "<p>抱歉，Weifeng 沒能找到相關資料。</p>";
-                }
-
-            } catch (error) {
-                console.error("搜尋錯誤:", error);
-                list.innerHTML = "<p>後台連線失敗，請檢查 API Key 或網路狀況。</p>";
-            }
+                list.innerHTML = "";
+                data.organic.forEach(res => {
+                    list.innerHTML += `<div class="item">
+                        <a class="item-title" href="${res.link}" target="_blank">${res.title}</a>
+                        <span class="item-url">${res.link}</span>
+                        <p class="item-snippet">${res.snippet}</p>
+                    </div>`;
+                });
+            } catch(e) { list.innerHTML = "搜尋失敗。"; }
         }
     </script>
 </body>
