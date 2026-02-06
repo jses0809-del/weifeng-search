@@ -2,53 +2,139 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>搜尋結果 - Weifeng Search</title>
     <link rel="icon" type="image/png" href="logo.png">
     <style>
-        body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; padding: 20px; }
-        .header { display: flex; align-items: center; gap: 20px; border-bottom: 1px solid #ebebeb; padding-bottom: 20px; }
-        .logo-small { width: 30px; height: auto; cursor: pointer; }
-        .result-item { max-width: 650px; margin-top: 25px; }
-        .result-title { font-size: 20px; color: #1a0dab; text-decoration: none; }
+        body { font-family: 'Segoe UI', Roboto, arial, sans-serif; margin: 0; background: #fff; color: #202124; }
+        
+        /* 上方搜尋欄 */
+        .header { 
+            display: flex; align-items: center; padding: 20px 30px; 
+            border-bottom: 1px solid #ebebeb; position: sticky; top: 0; background: white; z-index: 100;
+        }
+        .logo-small { width: 40px; height: auto; cursor: pointer; margin-right: 20px; }
+        .search-container { position: relative; width: 100%; max-width: 600px; }
+        .search-input { 
+            width: 100%; padding: 12px 20px; border: 1px solid #dfe1e5; border-radius: 24px; 
+            font-size: 16px; outline: none; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .search-input:focus { box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
+
+        /* 結果列表區 */
+        .results-wrapper { padding: 20px 30px 20px 90px; } /* 留白讓排版更像專業搜尋引擎 */
+        .result-item { max-width: 650px; margin-bottom: 30px; animation: fadeIn 0.5s ease; }
+        .result-title { font-size: 20px; color: #1a0dab; text-decoration: none; display: block; margin-bottom: 4px; }
         .result-title:hover { text-decoration: underline; }
-        .result-url { font-size: 14px; color: #006621; display: block; margin-top: 2px; }
-        .result-snippet { font-size: 14px; color: #4d5156; margin-top: 5px; line-height: 1.5; }
+        .result-url { font-size: 14px; color: #006621; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .result-snippet { font-size: 14px; color: #4d5156; line-height: 1.5; }
+        
+        #loading { color: #70757a; font-size: 14px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 手機版適應 */
+        @media (max-width: 768px) {
+            .results-wrapper { padding: 20px; }
+            .header { padding: 15px; }
+        }
     </style>
 </head>
 <body>
+
     <div class="header">
-        <img src="logo.png" class="logo-small" onclick="location.href='index.html'">
-        <input type="text" id="res-search-input" style="width: 500px; padding: 10px; border-radius: 24px; border: 1px solid #dfe1e5;">
+        <img src="logo.png" class="logo-small" onclick="location.href='index.html'" alt="Weifeng Logo">
+        <div class="search-container">
+            <input type="text" id="res-search-input" class="search-input" placeholder="在 Weifeng 上搜尋...">
+        </div>
     </div>
 
-    <div id="results-list">
-        <p id="loading">正在為您搜尋...</p>
+    <div class="results-wrapper">
+        <div id="results-list">
+            <p id="loading">🔍 Weifeng 正在為您檢索資訊...</p>
+        </div>
     </div>
 
     <script>
-        // 獲取網址上的參數 ?q=關鍵字
+        // 1. 取得網址參數中的關鍵字 (?q=xxx)
         const urlParams = new URLSearchParams(window.location.search);
         const query = urlParams.get('q');
-        
+        const searchInput = document.getElementById('res-search-input');
+
         if (query) {
-            document.getElementById('res-search-input').value = query;
-            fetchResults(query);
+            searchInput.value = query;
+            fetchDuckDuckGoResults(query);
         }
 
-        async function fetchResults(q) {
-            // 這裡需要串接 API，暫時用模擬數據展示
+        // 2. 監聽結果頁的搜尋框 (讓使用者可以直接在結果頁再次搜尋)
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const newQuery = searchInput.value;
+                if (newQuery.trim()) {
+                    window.location.href = `results.html?q=${encodeURIComponent(newQuery)}`;
+                }
+            }
+        });
+
+        // 3. 串接 DuckDuckGo API
+        async function fetchDuckDuckGoResults(q) {
             const list = document.getElementById('results-list');
-            
-            // 模擬延遲
-            setTimeout(() => {
-                list.innerHTML = `
-                    <div class="result-item">
-                        <a class="result-title" href="#">${q} - 維基百科</a>
-                        <span class="result-url">https://zh.wikipedia.org/wiki/${q}</span>
-                        <p class="result-snippet">這是關於 ${q} 的詳細介紹，Weifeng Search 為您找到最相關的資訊...</p>
-                    </div>
-                `;
-            }, 800);
+            try {
+                // DuckDuckGo API 請求
+                const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&pretty=1&no_html=1&skip_disambig=1`);
+                const data = await response.json();
+
+                list.innerHTML = ""; // 清空載入文字
+
+                let hasResults = false;
+
+                // 顯示精選摘要 (Abstract) - 類似 Google 的資訊卡片
+                if (data.AbstractText) {
+                    hasResults = true;
+                    list.innerHTML += `
+                        <div class="result-item" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dadce0;">
+                            <span style="font-size: 12px; color: #70757a; font-weight: bold;">精選摘要</span>
+                            <a class="result-title" href="${data.AbstractURL}" target="_blank">${data.Heading}</a>
+                            <p class="result-snippet">${data.AbstractText}</p>
+                            <span class="result-url">來源：${data.AbstractSource}</span>
+                        </div>
+                    `;
+                }
+
+                // 顯示相關結果 (Related Topics)
+                data.RelatedTopics.forEach(topic => {
+                    // 過濾掉分類標籤，只抓有文字和連結的結果
+                    if (topic.Text && topic.FirstURL) {
+                        hasResults = true;
+                        // 簡單切分標題與內容
+                        const splitIdx = topic.Text.indexOf(' - ') !== -1 ? topic.Text.indexOf(' - ') : topic.Text.indexOf(' ');
+                        const title = topic.Text.substring(0, splitIdx) || topic.Text;
+                        const snippet = topic.Text.substring(splitIdx) || "";
+
+                        list.innerHTML += `
+                            <div class="result-item">
+                                <a class="result-title" href="${topic.FirstURL}" target="_blank">${title}</a>
+                                <span class="result-url">${topic.FirstURL}</span>
+                                <p class="result-snippet">${snippet}</p>
+                            </div>
+                        `;
+                    }
+                });
+
+                if (!hasResults) {
+                    list.innerHTML = `
+                        <p>找不到關於「${q}」的具體結果。</p>
+                        <p style="color: #70757a;">建議：檢查拼字是否有誤，或嘗試更寬鬆的關鍵字。</p>
+                    `;
+                }
+
+            } catch (error) {
+                console.error("API Error:", error);
+                list.innerHTML = "<p>搜尋服務暫時無法連線，請稍後再試。</p>";
+            }
         }
     </script>
 </body>
