@@ -22,25 +22,34 @@ function openAuth(reg) {
     document.getElementById('reg-fields').style.display = reg ? "block" : "none";
     document.getElementById('step-1').style.display = 'block';
     document.getElementById('step-2').style.display = 'none';
+    document.getElementById('acc-id').value = ""; // 清空輸入框
 }
 
 function closeAuth() { document.getElementById('auth-overlay').style.display = 'none'; }
 function switchToRegister() { openAuth(true); }
 
+// 處理 Email 格式的關鍵函數
+function getFinalEmail(input) {
+    // 如果輸入內容已經包含 @，就直接回傳；否則加上 @weifeng.tw
+    return input.includes('@') ? input : `${input}@weifeng.tw`;
+}
+
 function goToStep2() {
-    const id = document.getElementById('acc-id').value;
-    if(!id) return alert("請輸入帳號");
-    document.getElementById('display-email').innerText = id + "@weifeng.tw";
+    const id = document.getElementById('acc-id').value.trim();
+    if(!id) return alert("請輸入帳號或 Email");
+    
+    const finalEmail = getFinalEmail(id);
+    document.getElementById('display-email').innerText = finalEmail;
     document.getElementById('step-1').style.display = 'none';
     document.getElementById('step-2').style.display = 'block';
 }
 
 // 登入/註冊核心
 async function processAuth() {
-    const id = document.getElementById('acc-id').value;
+    const id = document.getElementById('acc-id').value.trim();
     const pw = document.getElementById('acc-pw').value;
-    const email = id + "@weifeng.tw";
-    const name = document.getElementById('reg-name').value || id;
+    const email = getFinalEmail(id); // 使用判斷後的 Email
+    const name = document.getElementById('reg-name').value || id.split('@')[0];
 
     try {
         if(isRegisterMode) {
@@ -54,7 +63,7 @@ async function processAuth() {
         }
         closeAuth();
     } catch(e) {
-        alert("登入失敗: " + e.message);
+        alert("失敗: " + e.message);
     }
 }
 
