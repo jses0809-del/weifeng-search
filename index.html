@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>微風搜尋 Weifeng Search</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { text-align: center; font-family: sans-serif; padding-top: 50px; }
+        .logo { width: 250px; margin-bottom: 20px; }
+        .input-group { margin: 10px; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; background: #1a73e8; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <img src="IMG_0192.png" alt="Weifeng Logo" class="logo">
+
+    <div id="auth-zone">
+        <div class="input-group">
+            <input type="text" id="account-input" placeholder="帳號 (例如 000)">
+            <span style="font-weight:bold">@weifeng.tw</span>
+        </div>
+        <div class="input-group">
+            <input type="password" id="password-input" placeholder="請輸入密碼">
+        </div>
+        <button onclick="handleAuth('login')">登入</button>
+        <button onclick="handleAuth('signup')" style="background:#34a853">建立帳號</button>
+    </div>
+
+    <div id="search-zone" style="display:none;">
+        <input type="text" id="q" placeholder="在此搜尋..." style="width:400px; border-radius:24px;">
+        <button>搜尋</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
