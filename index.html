@@ -2,43 +2,52 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weifeng Search</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="icon" href="logo.png" type="image/png">
+    
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    
     <style>
         body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; background: #fff; }
         .navbar { display: flex; justify-content: flex-end; align-items: center; padding: 12px 20px; height: 48px; }
-        .login-btn { background: #1a73e8; color: white; border: none; padding: 9px 23px; border-radius: 4px; cursor: pointer; }
-        .user-avatar-btn { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: none; object-fit: cover; }
+        .login-btn { background: #1a73e8; color: white; border: none; padding: 9px 23px; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        .user-avatar-btn { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: none; object-fit: cover; border: 1px solid #ddd; }
+
         .main { display: flex; flex-direction: column; align-items: center; margin-top: 100px; }
         .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
-        .logo { width: 60px; height: auto; }
-        .brand-name { font-size: 36px; color: #444; }
+        .logo { width: 50px; height: auto; }
+        .brand-name { font-size: 32px; color: #444; }
+
         .search-wrapper { width: 100%; max-width: 584px; padding: 0 20px; box-sizing: border-box; }
-        .search-box { width: 100%; padding: 12px 20px; border: 1px solid #dfe1e5; border-radius: 24px; font-size: 16px; outline: none; }
+        .search-box { width: 100%; padding: 12px 25px; border: 1px solid #dfe1e5; border-radius: 24px; font-size: 16px; outline: none; }
         .search-box:focus { box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
-        .history-section { width: 100%; margin-top: 20px; display: none; }
-        .history-item { padding: 10px; cursor: pointer; border-radius: 8px; font-size: 14px; }
-        .history-item:hover { background: #f1f3f4; }
-        /* 登入彈窗 */
+
+        /* 帳戶選單 */
+        #account-menu { 
+            display: none; position: absolute; right: 20px; top: 60px; background: #e9eef6; 
+            width: 280px; padding: 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1000; text-align: center;
+        }
+
+        /* 登入視窗 */
         .auth-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; justify-content: center; align-items: center; }
         .auth-card { width: 350px; padding: 40px; border: 1px solid #dadce0; border-radius: 8px; text-align: center; }
         .auth-input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; }
-        .next-btn { width: 100%; background: #1a73e8; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; }
+        .next-btn { width: 100%; background: #1a73e8; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; margin-top: 15px; }
     </style>
 </head>
 <body>
+
     <div class="navbar">
-        <div id="user-section" style="display:none; position:relative;">
+        <div id="user-section">
             <img id="top-avatar" class="user-avatar-btn" onclick="toggleMenu()">
-            <div id="account-menu" style="display:none; position:absolute; right:0; top:45px; background:#e9eef6; width:280px; padding:20px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); z-index:1000;">
+            <div id="account-menu">
                 <img id="menu-avatar" style="width:70px; height:70px; border-radius:50%; cursor:pointer;" onclick="changeAvatar()">
                 <div id="menu-name" style="font-weight:bold; margin-top:10px;"></div>
-                <div id="menu-email" style="font-size:12px; color:#555;"></div>
-                <hr>
-                <div onclick="auth.signOut()" style="cursor:pointer; padding:10px;">登出</div>
+                <div id="menu-email" style="font-size:12px; color:#555; margin-bottom:15px;"></div>
+                <button onclick="auth.signOut()" style="width:100%; padding:8px; border:none; border-radius:4px; cursor:pointer;">登出</button>
             </div>
         </div>
         <button id="nav-login-btn" class="login-btn" onclick="openAuth(false)">登入</button>
@@ -46,15 +55,11 @@
 
     <div class="main">
         <div class="brand">
-            <img src="logo.png" class="logo">
+            <img src="logo.png" class="logo" alt="Weifeng Logo">
             <span class="brand-name">Weifeng Search</span>
         </div>
         <div class="search-wrapper">
             <input type="text" id="search-input" class="search-box" placeholder="在 Weifeng 上搜尋..." onkeypress="handleSearch(event)">
-            <div id="history-section" class="history-section">
-                <div style="font-size:12px; color:#777; margin-bottom:5px;">最近搜尋紀錄</div>
-                <div id="history-list"></div>
-            </div>
         </div>
     </div>
 
@@ -63,97 +68,22 @@
             <h2 id="auth-title">登入</h2>
             <div id="step-1">
                 <div id="reg-fields" style="display:none;"><input type="text" id="reg-name" class="auth-input" placeholder="您的姓名"></div>
-                <input type="text" id="acc-id" class="auth-input" placeholder="帳號">
-                <div id="switch-text" style="color:#1a73e8; cursor:pointer; font-size:14px; margin:10px 0;" onclick="switchToRegister()">建立帳號</div>
+                <div style="position:relative;">
+                    <input type="text" id="acc-id" class="auth-input" placeholder="帳號名">
+                    <span style="position:absolute; right:10px; top:22px; color:#777;">@weifeng.tw</span>
+                </div>
+                <div id="switch-text" style="color:#1a73e8; cursor:pointer; font-size:14px; margin:15px 0;" onclick="switchToRegister()">建立新帳號</div>
                 <button class="next-btn" onclick="goToStep2()">下一步</button>
             </div>
             <div id="step-2" style="display:none;">
-                <div id="display-email" style="margin-bottom:10px; font-size:14px; color:#555;"></div>
+                <p id="display-email" style="font-size:14px; background:#f1f3f4; padding:8px; border-radius:15px;"></p>
                 <input type="password" id="acc-pw" class="auth-input" placeholder="輸入密碼">
                 <button class="next-btn" onclick="processAuth()">完成</button>
             </div>
             <p onclick="closeAuth()" style="cursor:pointer; color:#777; font-size:14px; margin-top:20px;">取消</p>
         </div>
     </div>
-    <script src="app.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-    <meta charset="UTF-8">
-    <title>Weifeng Search</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; background: #fff; }
-        .navbar { display: flex; justify-content: flex-end; align-items: center; padding: 12px 20px; height: 48px; }
-        .login-btn { background: #1a73e8; color: white; border: none; padding: 9px 23px; border-radius: 4px; cursor: pointer; }
-        .user-avatar-btn { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: none; object-fit: cover; }
-        .main { display: flex; flex-direction: column; align-items: center; margin-top: 100px; }
-        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
-        .logo { width: 60px; height: auto; }
-        .brand-name { font-size: 36px; color: #444; }
-        .search-wrapper { width: 100%; max-width: 584px; padding: 0 20px; box-sizing: border-box; }
-        .search-box { width: 100%; padding: 12px 20px; border: 1px solid #dfe1e5; border-radius: 24px; font-size: 16px; outline: none; }
-        .search-box:focus { box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
-        .history-section { width: 100%; margin-top: 20px; display: none; }
-        .history-item { padding: 10px; cursor: pointer; border-radius: 8px; font-size: 14px; }
-        .history-item:hover { background: #f1f3f4; }
-        /* 登入彈窗 */
-        .auth-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; justify-content: center; align-items: center; }
-        .auth-card { width: 350px; padding: 40px; border: 1px solid #dadce0; border-radius: 8px; text-align: center; }
-        .auth-input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; }
-        .next-btn { width: 100%; background: #1a73e8; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <div class="navbar">
-        <div id="user-section" style="display:none; position:relative;">
-            <img id="top-avatar" class="user-avatar-btn" onclick="toggleMenu()">
-            <div id="account-menu" style="display:none; position:absolute; right:0; top:45px; background:#e9eef6; width:280px; padding:20px; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); z-index:1000;">
-                <img id="menu-avatar" style="width:70px; height:70px; border-radius:50%; cursor:pointer;" onclick="changeAvatar()">
-                <div id="menu-name" style="font-weight:bold; margin-top:10px;"></div>
-                <div id="menu-email" style="font-size:12px; color:#555;"></div>
-                <hr>
-                <div onclick="auth.signOut()" style="cursor:pointer; padding:10px;">登出</div>
-            </div>
-        </div>
-        <button id="nav-login-btn" class="login-btn" onclick="openAuth(false)">登入</button>
-    </div>
 
-    <div class="main">
-        <div class="brand">
-            <img src="logo.png" class="logo">
-            <span class="brand-name">Weifeng Search</span>
-        </div>
-        <div class="search-wrapper">
-            <input type="text" id="search-input" class="search-box" placeholder="在 Weifeng 上搜尋..." onkeypress="handleSearch(event)">
-            <div id="history-section" class="history-section">
-                <div style="font-size:12px; color:#777; margin-bottom:5px;">最近搜尋紀錄</div>
-                <div id="history-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="auth-overlay" class="auth-overlay">
-        <div class="auth-card">
-            <h2 id="auth-title">登入</h2>
-            <div id="step-1">
-                <div id="reg-fields" style="display:none;"><input type="text" id="reg-name" class="auth-input" placeholder="您的姓名"></div>
-                <input type="text" id="acc-id" class="auth-input" placeholder="帳號">
-                <div id="switch-text" style="color:#1a73e8; cursor:pointer; font-size:14px; margin:10px 0;" onclick="switchToRegister()">建立帳號</div>
-                <button class="next-btn" onclick="goToStep2()">下一步</button>
-            </div>
-            <div id="step-2" style="display:none;">
-                <div id="display-email" style="margin-bottom:10px; font-size:14px; color:#555;"></div>
-                <input type="password" id="acc-pw" class="auth-input" placeholder="輸入密碼">
-                <button class="next-btn" onclick="processAuth()">完成</button>
-            </div>
-            <p onclick="closeAuth()" style="cursor:pointer; color:#777; font-size:14px; margin-top:20px;">取消</p>
-        </div>
-    </div>
     <script src="app.js"></script>
 </body>
 </html>

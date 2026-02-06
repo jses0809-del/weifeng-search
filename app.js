@@ -1,5 +1,6 @@
+// 請務必再次確認 apiKey 沒有填錯或漏掉
 const firebaseConfig = {
-  apiKey: "AIzaSyBroLWbh0y7bBp8lWLJKlJbusO36tOimL8",
+  apiKey: "AIzaSyBroLWbh0y7bBp8lWLJKlJbusO36tOimL8", 
   authDomain: "weifeng-ai-search.firebaseapp.com",
   projectId: "weifeng-ai-search",
   storageBucket: "weifeng-ai-search.firebasestorage.app",
@@ -13,13 +14,13 @@ const db = firebase.firestore();
 
 let isRegisterMode = false;
 
-// 登入彈窗控制
-function openAuth(forceReg) {
-    isRegisterMode = forceReg;
+// UI 切換
+function openAuth(reg) {
+    isRegisterMode = reg;
     document.getElementById('auth-overlay').style.display = 'flex';
     document.getElementById('step-1').style.display = 'block';
     document.getElementById('step-2').style.display = 'none';
-    document.getElementById('auth-title').innerText = isRegisterMode ? "建立帳號" : "登入";
+    document.getElementById('auth-title').innerText = isRegisterMode ? "建立 Weifeng 帳號" : "登入";
     document.getElementById('reg-fields').style.display = isRegisterMode ? "block" : "none";
 }
 function closeAuth() { document.getElementById('auth-overlay').style.display = 'none'; }
@@ -45,38 +46,30 @@ async function processAuth() {
                 name: name || id,
                 avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
             });
-        } else { await auth.signInWithEmailAndPassword(email, pw); }
+        } else {
+            await auth.signInWithEmailAndPassword(email, pw);
+        }
         closeAuth();
-    } catch(e) { alert(e.message); }
+    } catch(e) { alert("錯誤: " + e.message); }
 }
 
-// --- 搜尋邏輯 ---
-function handleSearch(e) { if(e.key === "Enter") executeSearch(); }
-
-async function executeSearch() {
-    const q = document.getElementById('search-input').value;
-    if(!q.trim()) return;
-
-    if(auth.currentUser) {
-        await db.collection('history').add({
-            uid: auth.currentUser.uid,
-            text: q,
-            time: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    }
-    // 【重點】跳轉到你自己的 results.html 頁面
-    window.location.href = `results.html?q=${encodeURIComponent(q)}`;
+// 搜尋跳轉
+function handleSearch(e) { if(e.key === 'Enter') executeSearch(); }
+function executeSearch() {
+    const val = document.getElementById('search-input').value;
+    if(val.trim()) window.location.href = `results.html?q=${encodeURIComponent(val)}`;
 }
 
-// --- 狀態監聽 ---
+// 狀態監聽
 auth.onAuthStateChanged(async (user) => {
     const loginBtn = document.getElementById('nav-login-btn');
     const userSec = document.getElementById('user-section');
     if(user) {
         loginBtn.style.display = 'none';
         userSec.style.display = 'block';
+        document.getElementById('top-avatar').style.display = 'block';
         const doc = await db.collection('users').doc(user.uid).get();
-        const data = doc.data() || { name: "User", avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png" };
+        const data = doc.data() || { name: "使用者", avatar: "https://cdn-icons-png.flaticon.com/512/149/149071.png" };
         document.getElementById('top-avatar').src = data.avatar;
         document.getElementById('menu-avatar').src = data.avatar;
         document.getElementById('menu-name').innerText = data.name;
@@ -89,5 +82,13 @@ auth.onAuthStateChanged(async (user) => {
 
 function toggleMenu() {
     const m = document.getElementById('account-menu');
-    m.style.display = m.style.display === 'block' ? 'none' : 'block';
+    m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+}
+
+async function changeAvatar() {
+    const url = prompt("請貼上新的頭像網址：");
+    if(url) {
+        await db.collection('users').doc(auth.currentUser.uid).update({avatar: url});
+        location.reload();
+    }
 }

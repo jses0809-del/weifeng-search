@@ -2,78 +2,58 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>搜尋結果 - Weifeng Search</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>Weifeng Search - 搜尋結果</title>
+    <link rel="icon" href="logo.png" type="image/png">
     <style>
-        body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; background: #fff; }
         .header { display: flex; align-items: center; padding: 15px 30px; border-bottom: 1px solid #ebebeb; position: sticky; top: 0; background: white; }
         .logo-small { width: 35px; height: auto; cursor: pointer; margin-right: 20px; }
-        .res-search-box { width: 500px; padding: 10px 20px; border: 1px solid #dfe1e5; border-radius: 24px; outline: none; }
-        .results-container { padding: 20px 30px 20px 85px; max-width: 700px; }
-        .result-item { margin-bottom: 28px; }
-        .result-title { font-size: 20px; color: #1a0dab; text-decoration: none; display: block; }
-        .result-title:hover { text-decoration: underline; }
-        .result-url { font-size: 14px; color: #006621; display: block; margin-top: 2px; }
-        .result-snippet { font-size: 14px; color: #4d5156; margin-top: 5px; line-height: 1.5; }
+        .res-input { width: 500px; padding: 10px 20px; border: 1px solid #dfe1e5; border-radius: 24px; outline: none; }
+        .content { padding: 20px 85px; max-width: 700px; }
+        .item { margin-bottom: 30px; }
+        .item-title { font-size: 20px; color: #1a0dab; text-decoration: none; }
+        .item-title:hover { text-decoration: underline; }
+        .item-snippet { font-size: 14px; color: #4d5156; margin-top: 5px; line-height: 1.5; }
     </style>
 </head>
 <body>
     <div class="header">
         <img src="logo.png" class="logo-small" onclick="location.href='index.html'">
-        <input type="text" id="top-search-input" class="res-search-box">
+        <input type="text" id="top-search" class="res-input">
     </div>
-    <div class="results-container" id="results-list">
-        <p>🔍 Weifeng 正在為您搜尋...</p>
+    <div class="content" id="results-list">
+        <p>🔍 正在準備搜尋結果...</p>
     </div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const query = urlParams.get('q');
-        const input = document.getElementById('top-search-input');
+        const q = new URLSearchParams(window.location.search).get('q');
+        const input = document.getElementById('top-search');
+        if(q) { input.value = q; fetchResults(q); }
 
-        if (query) {
-            input.value = query;
-            searchDuckDuckGo(query);
-        }
-
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                window.location.href = `results.html?q=${encodeURIComponent(input.value)}`;
-            }
+        input.addEventListener('keypress', e => {
+            if(e.key === 'Enter') window.location.href = `results.html?q=${encodeURIComponent(input.value)}`;
         });
 
-        async function searchDuckDuckGo(q) {
+        async function fetchResults(query) {
             const list = document.getElementById('results-list');
             try {
-                const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_html=1&skip_disambig=1`);
-                const data = await response.json();
+                const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`);
+                const data = await res.json();
                 list.innerHTML = "";
-
-                // 顯示精選回答
-                if (data.AbstractText) {
-                    list.innerHTML += `
-                        <div class="result-item" style="background:#f8f9fa; padding:15px; border-radius:8px;">
-                            <a class="result-title" href="${data.AbstractURL}">${data.Heading}</a>
-                            <p class="result-snippet">${data.AbstractText}</p>
-                        </div><hr>`;
+                
+                if(data.AbstractText) {
+                    list.innerHTML += `<div class="item"><h3>${data.Heading}</h3><p>${data.AbstractText}</p></div><hr>`;
                 }
-
-                // 顯示相關主題
-                data.RelatedTopics.forEach(topic => {
-                    if (topic.Text && topic.FirstURL) {
+                data.RelatedTopics.forEach(t => {
+                    if(t.Text) {
                         list.innerHTML += `
-                            <div class="result-item">
-                                <a class="result-title" href="${topic.FirstURL}">${topic.Text.split(' - ')[0]}</a>
-                                <span class="result-url">${topic.FirstURL}</span>
-                                <p class="result-snippet">${topic.Text}</p>
-                            </div>`;
+                        <div class="item">
+                            <a class="item-title" href="${t.FirstURL}" target="_blank">${t.Text.split(' - ')[0]}</a>
+                            <p class="item-snippet">${t.Text}</p>
+                        </div>`;
                     }
                 });
-
-                if(list.innerHTML === "") list.innerHTML = "沒有找到相關結果。";
-            } catch (error) {
-                list.innerHTML = "搜尋失敗，請檢查網路連線。";
-            }
+            } catch(e) { list.innerHTML = "無法取得結果。"; }
         }
     </script>
 </body>
