@@ -1,4 +1,4 @@
-// Firebase 配置 (沿用你截圖中的資訊)
+// 請確保這裡的 Config 是從你的 Firebase 專案複製過來的
 const firebaseConfig = {
   apiKey: "AIzaSyBroLWbh0y7bbp8lWLJKLJbusO36tOimL8",
   authDomain: "weifeng-ai-search.firebaseapp.com",
@@ -12,87 +12,90 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-let isSignUp = false; // 追蹤是登入還是註冊
+let isNewUser = false;
 
-// 1. 打開登入介面
+// 1. 控制登入視窗
 function openAuth() {
+    isNewUser = false;
     document.getElementById('auth-overlay').style.display = 'flex';
     document.getElementById('step-1').style.display = 'block';
     document.getElementById('step-2').style.display = 'none';
+    document.getElementById('step-title').innerText = "登入";
 }
 
 function closeAuth() {
     document.getElementById('auth-overlay').style.display = 'none';
 }
 
-// 2. 切換到密碼介面 (第一步結束)
-function toStep2() {
-    const user = document.getElementById('acc-name').value;
-    if(!user) return alert("請輸入帳號");
+function toggleToRegister() {
+    isNewUser = true;
+    document.getElementById('step-title').innerText = "註冊";
+    alert("模式已切換為：建立新帳號");
+}
+
+// 2. 切換到密碼步驟
+function showPasswordStep() {
+    const id = document.getElementById('account-id').value;
+    if(!id) return alert("請輸入帳號");
     
-    document.getElementById('display-email').innerText = `${user}@weifeng.tw`;
+    document.getElementById('target-email').innerText = id + "@weifeng.tw";
     document.getElementById('step-1').style.display = 'none';
     document.getElementById('step-2').style.display = 'block';
 }
 
-// 3. 完成驗證
-async function finishAuth() {
-    const user = document.getElementById('acc-name').value;
-    const pw = document.getElementById('acc-pw').value;
-    const email = `${user}@weifeng.tw`;
+// 3. 執行 Firebase 驗證
+async function submitAuth() {
+    const id = document.getElementById('account-id').value;
+    const pw = document.getElementById('account-pw').value;
+    const email = id + "@weifeng.tw";
 
     try {
-        if(isSignUp) {
+        if(isNewUser) {
             await auth.createUserWithEmailAndPassword(email, pw);
-            alert("帳號建立成功");
+            alert("帳號註冊成功！");
         } else {
             await auth.signInWithEmailAndPassword(email, pw);
+            alert("歡迎回來！");
         }
         closeAuth();
-        updateUI(email);
+        location.reload(); // 登入後重新整理以顯示狀態
     } catch(e) {
-        // 如果登入時找不到帳號，自動切換為詢問註冊
-        if(e.code === 'auth/user-not-found') {
-            if(confirm("找不到帳號，要直接註冊嗎？")) {
-                isSignUp = true;
-                finishAuth();
-            }
-        } else {
-            alert(e.message);
-        }
+        alert("錯誤: " + e.message);
     }
 }
 
-// 4. 更新主頁 UI (顯示登入帳號)
-function updateUI(email) {
-    document.getElementById('nav-login-btn').style.display = 'none';
-    const display = document.getElementById('user-display');
-    display.style.display = 'block';
-    display.innerText = "👋 " + email.split('@')[0];
-    loadHistory();
-}
-
-// 監聽搜尋並儲存
-document.getElementById('main-q').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        const q = this.value;
-        const user = auth.currentUser;
-        if(user) {
-            db.collection('history').add({
-                uid: user.uid,
-                q: q,
-                time: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => loadHistory());
-        }
-        alert("執行搜尋: " + q);
+// 4. 監聽登入狀態與紀錄
+auth.onAuthStateChanged(user => {
+    if(user) {
+        document.getElementById('main-login-btn').innerText = "登出";
+        document.getElementById('main-login-btn').onclick = () => auth.signOut().then(()=>location.reload());
+        document.getElementById('user-info').innerText = user.email;
+        loadHistory(user.uid);
     }
 });
 
-async function loadHistory() {
-    const user = auth.currentUser;
-    if(!user) return;
-    const snap = await db.collection('history').where('uid', '==', user.uid).orderBy('time', 'desc').limit(5).get();
-    let h = "<b>最近搜尋:</b><br>";
-    snap.forEach(doc => h += `<div>🕒 ${doc.data().q}</div>`);
-    document.getElementById('history-box').innerHTML = h;
+// 搜尋儲存邏輯
+document.getElementById('main-search').addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+        const val = e.target.value;
+        const user = auth.currentUser;
+        if(user && val) {
+            await db.collection('history').add({
+                uid: user.uid,
+                text: val,
+                time: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            loadHistory(user.uid);
+        }
+        alert("搜尋中: " + val);
+    }
+});
+
+async function loadHistory(uid) {
+    const snap = await db.collection('history').where('uid', '==', uid).orderBy('time', 'desc').limit(5).get();
+    let html = "<b>最近搜尋紀錄</b>";
+    snap.forEach(doc => {
+        html += `<div style="padding:5px 0;">🕒 ${doc.data().text}</div>`;
+    });
+    document.getElementById('history-display').innerHTML = html;
 }
