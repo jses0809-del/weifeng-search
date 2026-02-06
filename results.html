@@ -2,49 +2,98 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weifeng Search - 搜尋結果</title>
     <link rel="icon" href="logo.png" type="image/png">
+    
     <style>
         body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; background: #fff; color: #202124; }
-        .header { display: flex; align-items: center; padding: 15px 30px; border-bottom: 1px solid #ebebeb; position: sticky; top: 0; background: white; z-index: 1000; }
-        .logo-small { width: 35px; height: auto; cursor: pointer; margin-right: 20px; }
-        .res-input { width: 100%; max-width: 500px; padding: 10px 20px; border: 1px solid #dfe1e5; border-radius: 24px; outline: none; font-size: 16px; }
-        .content { padding: 20px 85px; max-width: 700px; }
-        .item { margin-bottom: 30px; }
-        .item-title { font-size: 20px; color: #1a0dab; text-decoration: none; font-weight: 500; display: block; }
+        
+        /* 上方導覽列 */
+        .header { 
+            display: flex; align-items: center; padding: 15px 30px; 
+            border-bottom: 1px solid #ebebeb; position: sticky; top: 0; 
+            background: white; z-index: 1000; 
+        }
+        .logo-small { width: 35px; height: auto; cursor: pointer; margin-right: 25px; }
+        
+        .search-container { display: flex; align-items: center; background: #fff; border: 1px solid #dfe1e5; border-radius: 24px; width: 100%; max-width: 600px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .search-container:hover { box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
+        
+        .res-input { flex: 1; border: none; padding: 10px 20px; border-radius: 24px; outline: none; font-size: 16px; }
+        
+        .res-search-btn { background: #1a73e8; color: white; border: none; padding: 8px 18px; border-radius: 20px; cursor: pointer; margin-right: 5px; font-weight: 500; }
+        .res-search-btn:hover { background: #1557b0; }
+
+        /* 結果內容區 */
+        .content { padding: 20px 20px 20px 90px; max-width: 700px; }
+        
+        #status { color: #70757a; font-size: 14px; margin-bottom: 20px; }
+        
+        .item { margin-bottom: 30px; animation: fadeIn 0.4s ease; }
+        .item-title { font-size: 20px; color: #1a0dab; text-decoration: none; font-weight: 500; display: block; margin-bottom: 3px; }
         .item-title:hover { text-decoration: underline; }
-        .item-url { font-size: 14px; color: #006621; display: block; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-snippet { font-size: 14px; color: #4d5156; margin-top: 5px; line-height: 1.5; }
-        #status { color: #70757a; font-size: 14px; }
+        
+        .item-url { font-size: 14px; color: #006621; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-snippet { font-size: 14px; color: #4d5156; line-height: 1.5; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 手機版適應 */
+        @media (max-width: 768px) {
+            .content { padding: 20px; }
+            .header { padding: 15px; }
+            .search-container { max-width: none; }
+        }
     </style>
 </head>
 <body>
+
     <div class="header">
-        <img src="logo.png" class="logo-small" onclick="location.href='index.html'">
-        <input type="text" id="top-search" class="res-input" placeholder="在 Weifeng 上搜尋...">
+        <img src="logo.png" class="logo-small" onclick="location.href='index.html'" alt="Weifeng">
+        <div class="search-container">
+            <input type="text" id="top-search" class="res-input" placeholder="在 Weifeng 上搜尋...">
+            <button class="res-search-btn" onclick="triggerNewSearch()">搜尋</button>
+        </div>
     </div>
+
     <div class="content" id="results-list">
-        <p id="status">🔍 Weifeng 正在為您提取資料...</p>
-    </div>
+        <p id="status">🔍 Weifeng 正在從後台提取資料庫資訊...</p>
+        </div>
 
     <script>
-        const q = new URLSearchParams(window.location.search).get('q');
-        const input = document.getElementById('top-search');
+        // 1. 初始化搜尋：取得網址上的關鍵字 ?q=xxx
+        const urlParams = new URLSearchParams(window.location.search);
+        const query = urlParams.get('q');
+        const searchInput = document.getElementById('top-search');
         
         if (q) {
-            input.value = q;
-            fetchFromSerper(q);
+            searchInput.value = query;
+            fetchResultsFromSerper(query);
         }
 
-        input.addEventListener('keypress', e => {
-            if (e.key === 'Enter' && input.value.trim()) {
-                window.location.href = `results.html?q=${encodeURIComponent(input.value)}`;
-            }
+        // 2. 監聽 Enter 鍵
+        searchInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') triggerNewSearch();
         });
 
-        async function fetchFromSerper(query) {
+        // 3. 執行新搜尋
+        function triggerNewSearch() {
+            const val = searchInput.value.trim();
+            if (val) {
+                window.location.href = `results.html?q=${encodeURIComponent(val)}`;
+            }
+        }
+
+        // 4. 後台提取資料邏輯 (Serper.dev)
+        async function fetchResultsFromSerper(searchQuery) {
             const list = document.getElementById('results-list');
-            // 這裡使用的是你剛才提供的 API KEY
+            const statusText = document.getElementById('status');
+            
+            // 使用你提供的 Serper.dev API KEY
             const apiKey = "b8cdaab7fd01e7a8cd78ce3c164e5fe1d042446b"; 
 
             try {
@@ -55,33 +104,36 @@
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({ 
-                        "q": query,
-                        "gl": "tw", // 設定地區為台灣
-                        "hl": "zh-tw" // 設定語言為繁體中文
+                        "q": searchQuery,
+                        "gl": "tw", // 地區：台灣
+                        "hl": "zh-tw" // 語言：繁體中文
                     })
                 });
                 
                 const data = await response.json();
-                list.innerHTML = ""; // 清空載入中狀態
+                
+                // 清空狀態文字
+                list.innerHTML = `<p style="color:#70757a; font-size:12px;">找到約 ${data.organic ? data.organic.length : 0} 筆結果</p>`;
 
-                // 處理搜尋結果 (Organic results)
+                // 渲染自然搜尋結果 (Organic)
                 if (data.organic && data.organic.length > 0) {
                     data.organic.forEach(result => {
-                        const div = document.createElement('div');
-                        div.className = 'item';
-                        div.innerHTML = `
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'item';
+                        itemDiv.innerHTML = `
                             <a class="item-title" href="${result.link}" target="_blank">${result.title}</a>
                             <span class="item-url">${result.link}</span>
-                            <p class="item-snippet">${result.snippet || ""}</p>
+                            <p class="item-snippet">${result.snippet || "無詳細內容描述。"}</p>
                         `;
-                        list.appendChild(div);
+                        list.appendChild(itemDiv);
                     });
                 } else {
-                    list.innerHTML = "<p>找不到關於「" + query + "」的搜尋結果。</p>";
+                    list.innerHTML = "<p>抱歉，Weifeng 沒能找到相關資料。</p>";
                 }
-            } catch (e) {
-                console.error(e);
-                list.innerHTML = "<p>搜尋服務暫時無法連線，請檢查 API Key 或網路狀態。</p>";
+
+            } catch (error) {
+                console.error("搜尋錯誤:", error);
+                list.innerHTML = "<p>後台連線失敗，請檢查 API Key 或網路狀況。</p>";
             }
         }
     </script>

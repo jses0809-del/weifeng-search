@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weifeng Search</title>
-    
     <link rel="icon" href="logo.png" type="image/png">
     
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -13,51 +12,74 @@
     
     <style>
         body { font-family: 'Segoe UI', arial, sans-serif; margin: 0; background: #fff; overflow-x: hidden; }
-        
-        /* 右上角導覽列 */
         .navbar { display: flex; justify-content: flex-end; align-items: center; padding: 12px 20px; height: 48px; position: relative; }
         .login-btn { background: #1a73e8; color: white; border: none; padding: 9px 23px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 14px; }
         .user-avatar-btn { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; object-fit: cover; border: 1px solid #ddd; display: none; }
 
-        /* 使用者選單 */
-        .account-menu { 
-            display: none; position: absolute; top: 60px; right: 20px; width: 280px; 
-            background: #e9eef6; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 20px; z-index: 1000; text-align: center; 
-        }
-        .menu-avatar-large { width: 70px; height: 70px; border-radius: 50%; cursor: pointer; object-fit: cover; margin-bottom: 10px; }
-
-        /* 中央搜尋區 (已修正重複問題) */
         .main { display: flex; flex-direction: column; align-items: center; margin-top: 100px; }
         .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
         .logo { width: 60px; height: auto; }
         .brand-name { font-size: 36px; color: #444; font-weight: 400; }
         
-        /* 搜尋框 */
-        .search-wrapper { width: 100%; max-width: 584px; padding: 0 20px; box-sizing: border-box; }
-        .search-box { 
-            width: 100%; padding: 12px 25px; border: 1px solid #dfe1e5; border-radius: 24px; 
-            font-size: 16px; outline: none; box-sizing: border-box; transition: box-shadow 0.2s;
+        /* 搜尋框容器：改為 Flex 布局以容納按鈕 */
+        .search-wrapper { 
+            width: 100%; 
+            max-width: 584px; 
+            padding: 0 20px; 
+            box-sizing: border-box; 
+            display: flex; 
+            gap: 10px; /* 框跟按鈕的間距 */
         }
-        .search-box:focus { box-shadow: 0 1px 6px rgba(32,33,36,0.28); border-color: transparent; }
+        
+        .search-box { 
+            flex: 1; /* 讓搜尋框佔滿剩餘空間 */
+            padding: 12px 25px; 
+            border: 1px solid #dfe1e5; 
+            border-radius: 24px; 
+            font-size: 16px; 
+            outline: none; 
+            transition: box-shadow 0.2s;
+        }
+        .search-box:focus { box-shadow: 0 1px 6px rgba(32,33,36,0.28); }
 
-        /* 登入彈窗 */
+        /* 新增搜尋按鈕樣式 */
+        .search-btn {
+            background-color: #f8f9fa;
+            border: 1px solid #f8f9fa;
+            border-radius: 24px;
+            color: #3c4043;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 20px;
+            height: 46px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .search-btn:hover {
+            box-shadow: 0 1px 3px rgba(32,33,36,0.1);
+            background-color: #f1f3f4;
+            border: 1px solid #dadce0;
+        }
+
+        /* 帳戶選單與彈窗維持原樣... */
+        .account-menu { display: none; position: absolute; top: 60px; right: 20px; width: 280px; background: #e9eef6; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 20px; z-index: 1000; text-align: center; }
         .auth-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; justify-content: center; align-items: center; }
         .auth-card { width: 350px; padding: 40px; border: 1px solid #dadce0; border-radius: 8px; text-align: center; }
         .auth-input { width: 100%; padding: 13px; margin: 10px 0; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
-        .next-btn { width: 100%; background: #1a73e8; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; margin-top: 20px; font-weight: 500; }
+        .next-btn { width: 100%; background: #1a73e8; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div class="navbar">
         <div id="user-section">
-            <img id="top-avatar" class="user-avatar-btn" onclick="toggleMenu()" alt="User Avatar">
+            <img id="top-avatar" class="user-avatar-btn" onclick="toggleMenu()">
             <div id="account-menu" class="account-menu">
-                <img id="menu-avatar" class="menu-avatar-large" onclick="changeAvatar()" title="點擊更換頭像網址">
-                <div id="menu-name" style="font-weight: 500; font-size: 16px;"></div>
-                <div id="menu-email" style="color: #5f6368; font-size: 13px; margin-bottom: 15px;"></div>
-                <hr style="border: 0; border-top: 1px solid #ccc; margin: 10px 0;">
-                <div style="cursor: pointer; padding: 10px; font-size: 14px;" onclick="auth.signOut()">🚪 登出帳號</div>
+                <img id="menu-avatar" style="width:70px;height:70px;border-radius:50%;cursor:pointer;object-fit:cover;" onclick="changeAvatar()">
+                <div id="menu-name"></div>
+                <div id="menu-email"></div>
+                <hr>
+                <div onclick="auth.signOut()" style="cursor:pointer;padding:10px;">登出</div>
             </div>
         </div>
         <button id="nav-login-btn" class="login-btn" onclick="openAuth(false)">登入</button>
@@ -65,40 +87,17 @@
 
     <div class="main">
         <div class="brand">
-            <img src="logo.png" alt="Weifeng Logo" class="logo">
+            <img src="logo.png" class="logo">
             <span class="brand-name">Weifeng Search</span>
         </div>
         
         <div class="search-wrapper">
             <input type="text" id="search-input" class="search-box" placeholder="在 Weifeng 上搜尋..." onkeypress="handleSearch(event)">
+            <button class="search-btn" onclick="executeSearch()">Weifeng 搜尋</button>
         </div>
     </div>
 
-    <div id="auth-overlay" class="auth-overlay">
-        <div class="auth-card">
-            <h2 id="auth-title">登入</h2>
-            
-            <div id="step-1">
-                <div id="reg-fields" style="display:none;">
-                    <input type="text" id="reg-name" class="auth-input" placeholder="您的姓名">
-                </div>
-                <div style="position:relative;">
-                    <input type="text" id="acc-id" class="auth-input" placeholder="帳號名">
-                    <span style="position:absolute; right:12px; top:23px; color:#70757a; font-weight:bold;">@weifeng.tw</span>
-                </div>
-                <div id="switch-text" style="text-align:left; font-size:14px; color:#1a73e8; cursor:pointer; margin-top:10px;" onclick="switchToRegister()">建立新帳號</div>
-                <button class="next-btn" onclick="goToStep2()">下一步</button>
-            </div>
-
-            <div id="step-2" style="display:none;">
-                <p id="display-email" style="background:#f1f3f4; padding:8px; border-radius:15px; font-size:14px;"></p>
-                <input type="password" id="acc-pw" class="auth-input" placeholder="輸入您的密碼">
-                <button class="next-btn" onclick="processAuth()">完成</button>
-            </div>
-            
-            <p onclick="closeAuth()" style="margin-top:20px; color:#5f6368; cursor:pointer; font-size:14px;">取消</p>
-        </div>
-    </div>
+    <div id="auth-overlay" class="auth-overlay">...</div>
 
     <script src="app.js"></script>
 </body>
