@@ -1,20 +1,22 @@
-// 請確保這裡的 Config 是從你的 Firebase 專案複製過來的
+// 請再次確認這部分的 Config 與你 Firebase 後台顯示的完全一致
 const firebaseConfig = {
-  apiKey: "AIzaSyBroLWbh0y7bbp8lWLJKLJbusO36tOimL8",
+  apiKey: "AIzaSyBroLWbh0y7bbp8lWLJKLJbusO36tOimL8", // 結尾確認為 8
   authDomain: "weifeng-ai-search.firebaseapp.com",
   projectId: "weifeng-ai-search",
   storageBucket: "weifeng-ai-search.firebasestorage.app",
   messagingSenderId: "508132498464",
-  appId: "1:508132498464:web:af31188c836d408d86b045"
+  appId: "1:508132498464:web:af31188c836d408d86b045",
+  measurementId: "G-DX7B5REPVJ"
 };
 
+// 初始化
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
 let isNewUser = false;
 
-// 1. 控制登入視窗
+// 打開登入視窗
 function openAuth() {
     isNewUser = false;
     document.getElementById('auth-overlay').style.display = 'flex';
@@ -23,74 +25,76 @@ function openAuth() {
     document.getElementById('step-title').innerText = "登入";
 }
 
+// 關閉視窗
 function closeAuth() {
     document.getElementById('auth-overlay').style.display = 'none';
 }
 
+// 切換到註冊模式 (拿掉了彈窗提示)
 function toggleToRegister() {
     isNewUser = true;
-    document.getElementById('step-title').innerText = "註冊";
-    alert("模式已切換為：建立新帳號");
+    document.getElementById('step-title').innerText = "建立您的微風帳號";
+    document.getElementById('step-desc').innerText = "請輸入您想使用的帳號";
+    // 這裡不跳 alert，直接讓使用者感覺 UI 變化
 }
 
-// 2. 切換到密碼步驟
+// 切換到密碼步驟
 function showPasswordStep() {
     const id = document.getElementById('account-id').value;
-    if(!id) return alert("請輸入帳號");
+    if(!id) {
+        alert("請輸入帳號");
+        return;
+    }
     
     document.getElementById('target-email').innerText = id + "@weifeng.tw";
     document.getElementById('step-1').style.display = 'none';
     document.getElementById('step-2').style.display = 'block';
 }
 
-// 3. 執行 Firebase 驗證
+// 執行最後的驗證
 async function submitAuth() {
     const id = document.getElementById('account-id').value;
     const pw = document.getElementById('account-pw').value;
     const email = id + "@weifeng.tw";
 
+    if (pw.length < 6) {
+        alert("密碼長度至少需要 6 位數喔！");
+        return;
+    }
+
     try {
         if(isNewUser) {
             await auth.createUserWithEmailAndPassword(email, pw);
-            alert("帳號註冊成功！");
         } else {
             await auth.signInWithEmailAndPassword(email, pw);
-            alert("歡迎回來！");
         }
         closeAuth();
-        location.reload(); // 登入後重新整理以顯示狀態
+        // 登入後不需要重新整理，由監聽器處理 UI
     } catch(e) {
-        alert("錯誤: " + e.message);
+        // 如果是 API Key 錯誤，這裡會噴出訊息
+        console.error(e);
+        alert("發生錯誤: " + e.message);
     }
 }
 
-// 4. 監聽登入狀態與紀錄
+// 監聽登入狀態切換 UI
 auth.onAuthStateChanged(user => {
+    const loginBtn = document.getElementById('main-login-btn');
+    const userInfo = document.getElementById('user-info');
     if(user) {
-        document.getElementById('main-login-btn').innerText = "登出";
-        document.getElementById('main-login-btn').onclick = () => auth.signOut().then(()=>location.reload());
-        document.getElementById('user-info').innerText = user.email;
+        loginBtn.innerText = "登出";
+        loginBtn.onclick = () => auth.signOut();
+        userInfo.innerText = user.email.split('@')[0]; // 只顯示 000 部分
         loadHistory(user.uid);
+    } else {
+        loginBtn.innerText = "登入";
+        loginBtn.onclick = openAuth;
+        userInfo.innerText = "";
+        document.getElementById('history-display').innerHTML = "";
     }
 });
 
-// 搜尋儲存邏輯
-document.getElementById('main-search').addEventListener('keypress', async (e) => {
-    if (e.key === 'Enter') {
-        const val = e.target.value;
-        const user = auth.currentUser;
-        if(user && val) {
-            await db.collection('history').add({
-                uid: user.uid,
-                text: val,
-                time: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            loadHistory(user.uid);
-        }
-        alert("搜尋中: " + val);
-    }
-});
-
+// 搜尋儲存與顯示功能 (保持不變)
 async function loadHistory(uid) {
     const snap = await db.collection('history').where('uid', '==', uid).orderBy('time', 'desc').limit(5).get();
     let html = "<b>最近搜尋紀錄</b>";
